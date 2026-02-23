@@ -7,6 +7,7 @@ Batch Watermark Remover - Пакетное удаление водяных зн�
 import os
 import zipfile
 import shutil
+import json
 from typing import List, Tuple, Optional, Dict
 from PIL import Image
 import uuid
@@ -432,4 +433,5 @@ if __name__ == "__main__":
         
     except Exception as e:
         print(f"❌ Ошибка: {e}")
+
         exit(1)
