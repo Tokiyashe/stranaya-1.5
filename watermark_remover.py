@@ -5,7 +5,7 @@ Gemini Watermark Remover - Исправленная версия с inpainting
 
 import os
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 from typing import Optional, Union, Tuple, List
 import io
 import base64
@@ -98,7 +98,6 @@ class GeminiWatermarkRemover:
         draw.rectangle([x, y, x + w, y + h], fill=fill_color)
         
         # Добавляем небольшое размытие для естественности
-        from PIL import ImageFilter
         # Вырезаем область, размываем и вставляем обратно
         region_img = result.crop((x, y, x + w, y + h))
         blurred = region_img.filter(ImageFilter.GaussianBlur(radius=2))
@@ -235,8 +234,10 @@ class GeminiWatermarkRemover:
             
             # Выбираем метод удаления
             if method == "advanced":
+                logger.info("Используем метод advanced (интерполяция)")
                 result = self.remove_watermark_advanced(img, region)
             else:
+                logger.info("Используем метод inpaint (заливка)")
                 result = self.remove_watermark_inpaint(img, region)
             
             # Сохранение если нужно
