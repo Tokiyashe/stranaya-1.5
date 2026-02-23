@@ -216,3 +216,231 @@
             font-size: 14px;
             color: #888;
             margin-top: 5px;
+        }
+        
+        .download-link {
+            display: block;
+            margin-top: 10px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Удаление водяного знака Gemini</h1>
+        <p class="subtitle">Загрузи изображение, и я удалю видимый водяной знак Gemini</p>
+        
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📸</div>
+            <p>Нажми или перетащи изображение сюда</p>
+            <p class="info-text">Поддерживаются JPG, PNG, WebP</p>
+            <input type="file" id="fileInput" class="file-input" accept="image/*">
+        </div>
+        
+        <div class="preview-container" id="previewContainer">
+            <div class="image-comparison">
+                <div class="image-box">
+                    <h3>Оригинал</h3>
+                    <img id="originalPreview" src="" alt="Original">
+                </div>
+                <div class="image-box">
+                    <h3>Результат</h3>
+                    <img id="resultPreview" src="" alt="Result">
+                </div>
+            </div>
+        </div>
+        
+        <div class="options">
+            <div class="option-group">
+                <label for="watermarkSize">Размер водяного знака:</label>
+                <select id="watermarkSize">
+                    <option value="auto">Автоопределение</option>
+                    <option value="small">Маленький (48px)</option>
+                    <option value="large">Большой (96px)</option>
+                </select>
+            </div>
+            
+            <div class="option-group">
+                <label for="method">Метод удаления:</label>
+                <select id="method">
+                    <option value="inpaint">🎨 Заливка цветом (inpaint)</option>
+                    <option value="advanced">🔍 Интерполяция (advanced)</option>
+                </select>
+                <p class="info-text">Inpaint - закрашивает область, Advanced - смешивает пиксели</p>
+            </div>
+        </div>
+        
+        <button id="processBtn" disabled>Удалить водяной знак</button>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Обрабатываем изображение...</p>
+        </div>
+        
+        <div class="error" id="error"></div>
+        <div class="success" id="success"></div>
+        
+        <a href="/" class="back-link">← Вернуться на главную</a>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const originalPreview = document.getElementById('originalPreview');
+        const resultPreview = document.getElementById('resultPreview');
+        const previewContainer = document.getElementById('previewContainer');
+        const processBtn = document.getElementById('processBtn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const success = document.getElementById('success');
+        const watermarkSize = document.getElementById('watermarkSize');
+        const methodSelect = document.getElementById('method');
+        
+        let selectedFile = null;
+        
+        // Обработка клика по области загрузки
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        // Обработка перетаскивания
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            if (e.dataTransfer.files.length) {
+                handleFileSelect(e.dataTransfer.files[0]);
+            }
+        });
+        
+        // Обработка выбора файла
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+        
+        function handleFileSelect(file) {
+            if (!file.type.startsWith('image/')) {
+                showError('Пожалуйста, выберите изображение');
+                return;
+            }
+            
+            selectedFile = file;
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                originalPreview.src = e.target.result;
+                previewContainer.classList.add('active');
+                processBtn.disabled = false;
+                hideError();
+                hideSuccess();
+                resultPreview.src = ''; // Очищаем предыдущий результат
+                
+                // Удаляем старую ссылку для скачивания если есть
+                const oldLink = document.querySelector('.download-link');
+                if (oldLink) oldLink.remove();
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        // Обработка кнопки удаления
+        processBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            
+            loading.classList.add('active');
+            processBtn.disabled = true;
+            hideError();
+            hideSuccess();
+            
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('size', watermarkSize.value);
+            formData.append('method', methodSelect.value);
+            
+            try {
+                const response = await fetch('/api/remove-watermark', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    resultPreview.src = url;
+                    
+                    showSuccess('✅ Водяной знак успешно удален!');
+                    
+                    // Создаем ссылку для скачивания
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = url;
+                    downloadLink.download = 'cleaned_image.png';
+                    downloadLink.textContent = '📥 Скачать результат';
+                    downloadLink.style.display = 'block';
+                    downloadLink.style.marginTop = '10px';
+                    downloadLink.style.color = '#667eea';
+                    downloadLink.style.fontWeight = '500';
+                    downloadLink.style.textDecoration = 'none';
+                    
+                    downloadLink.classList.add('download-link');
+                    
+                    // Добавляем ссылку под результатом
+                    const resultBox = document.querySelector('.image-box:last-child');
+                    const oldLink = resultBox.querySelector('.download-link');
+                    if (oldLink) oldLink.remove();
+                    
+                    resultBox.appendChild(downloadLink);
+                    
+                } else {
+                    const data = await response.json();
+                    showError(data.error || 'Ошибка при обработке');
+                }
+                
+            } catch (err) {
+                showError('Ошибка соединения с сервером');
+                console.error(err);
+            } finally {
+                loading.classList.remove('active');
+                processBtn.disabled = false;
+            }
+        });
+        
+        function showError(message) {
+            error.textContent = '❌ ' + message;
+            error.classList.add('active');
+            
+            setTimeout(() => {
+                error.classList.remove('active');
+            }, 5000);
+        }
+        
+        function hideError() {
+            error.classList.remove('active');
+        }
+        
+        function showSuccess(message) {
+            success.textContent = message;
+            success.classList.add('active');
+            
+            setTimeout(() => {
+                success.classList.remove('active');
+            }, 3000);
+        }
+        
+        function hideSuccess() {
+            success.classList.remove('active');
+        }
+    </script>
+</body>
+</html>
