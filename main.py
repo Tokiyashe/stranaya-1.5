@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Form, HTTPException, File, UploadFile
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
+from fastapi.responses import HTMLResponse, FileResponse, JSONResponse, Response  # <-- ДОБАВЬ Response
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -239,11 +239,12 @@ async def api_remove_watermark(
         # Удаляем водяной знак
         clean_bytes = watermark_remover.remove_watermark(contents, force_size=force_size)
         
-        # Возвращаем очищенное изображение
+        # Возвращаем очищенное изображение - используем Response, а не FileResponse
         filename = f"clean_{file.filename}"
         if not filename.lower().endswith('.png'):
             filename = filename.rsplit('.', 1)[0] + '.png'
         
+        # ВАЖНО: используем Response с content_type image/png
         return Response(
             content=clean_bytes,
             media_type="image/png",
@@ -256,7 +257,6 @@ async def api_remove_watermark(
             status_code=400,
             content={"error": str(e)}
         )
-
 @app.post("/api/batch-process")
 async def batch_process(
     file: UploadFile = File(...),
@@ -394,4 +394,5 @@ async def shutdown():
 # Для локального запуска
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
