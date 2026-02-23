@@ -1,0 +1,39 @@
+/* Дополнительные стили для пакетной обработки */
+.batch-stats {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+}
+
+.batch-progress {
+    height: 30px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 15px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+
+.batch-progress-fill {
+    height: 100%;
+    background: white;
+    transition: width 0.3s;
+}
+
+.batch-file-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    margin-bottom: 8px;
+}
+
+.batch-file-item.success {
+    border-left: 4px solid #38a169;
+}
+
+.batch-file-item.error {
+    border-left: 4px solid #e53e3e;
+}

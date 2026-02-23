@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пакетное удаление водяных знаков</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 20px;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #f0f3ff;
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .file-info {
+            display: none;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+        
+        .file-info.active {
+            display: block;
+        }
+        
+        .file-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .file-size {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .options {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+        
+        .option-group {
+            margin-bottom: 15px;
+        }
+        
+        .option-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        select, input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #667eea;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        
+        button:hover:not(:disabled) {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .progress-bar.active {
+            display: block;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .error {
+            color: #e53e3e;
+            margin: 10px 0;
+            padding: 10px;
+            background: #fff5f5;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .error.active {
+            display: block;
+        }
+        
+        .success {
+            color: #38a169;
+            margin: 10px 0;
+            padding: 10px;
+            background: #f0fff4;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .success.active {
+            display: block;
+        }
+        
+        .stats {
+            display: none;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+        }
+        
+        .stats.active {
+            display: block;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        .info-text {
+            font-size: 13px;
+            color: #888;
+            margin-top: 5px;
+        }
+        
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📦 Пакетное удаление водяных знаков</h1>
+        <p class="subtitle">Загрузи ZIP архив с фото, получи обработанный архив</p>
+        
+        <div class="warning">
+            ⚠️ Поддерживаются форматы: JPG, PNG, WebP, BMP, TIFF
+        </div>
+        
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <p>Нажми или перетащи ZIP архив сюда</p>
+            <p class="info-text">Максимальный размер: 500 МБ</p>
+            <input type="file" id="fileInput" class="file-input" accept=".zip">
+        </div>
+        
+        <div class="file-info" id="fileInfo">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-size" id="fileSize"></div>
+        </div>
+        
+        <div class="options">
+            <div class="option-group">
+                <label for="watermarkSize">Размер водяного знака:</label>
+                <select id="watermarkSize">
+                    <option value="auto">Автоопределение</option>
+                    <option value="small">Маленький (48px)</option>
+                    <option value="large">Большой (96px)</option>
+                </select>
+            </div>
+            
+            <div class="option-group">
+                <label for="workers">Количество потоков:</label>
+                <input type="number" id="workers" min="1" max="8" value="4">
+                <div class="info-text">Больше потоков = быстрее, но больше нагрузка</div>
+            </div>
+            
+            <div class="option-group">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="keepStructure" checked>
+                    <label for="keepStructure">Сохранять структуру папок</label>
+                </div>
+            </div>
+        </div>
+        
+        <button id="processBtn" disabled>Начать обработку</button>
+        
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p id="loadingText">Обрабатываем изображения...</p>
+        </div>
+        
+        <div class="stats" id="stats">
+            <h3>Результат обработки:</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="statTotal">0</div>
+                    <div class="stat-label">всего фото</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statProcessed">0</div>
+                    <div class="stat-label">обработано</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="statFailed">0</div>
+                    <div class="stat-label">ошибок</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="error" id="error"></div>
+        <div class="success" id="success"></div>
+        
+        <a href="/" class="back-link">← Вернуться на главную</a>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const fileInfo = document.getElementById('fileInfo');
+        const processBtn = document.getElementById('processBtn');
+        const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loadingText');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const error = document.getElementById('error');
+        const success = document.getElementById('success');
+        const stats = document.getElementById('stats');
+        const statTotal = document.getElementById('statTotal');
+        const statProcessed = document.getElementById('statProcessed');
+        const statFailed = document.getElementById('statFailed');
+        
+        let selectedFile = null;
+        
+        // Обработка клика по области загрузки
+        uploadArea.addEventListener('click', () => {
+            fileInput.click();
+        });
+        
+        // Обработка перетаскивания
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            if (e.dataTransfer.files.length) {
+                handleFileSelect(e.dataTransfer.files[0]);
+            }
+        });
+        
+        // Обработка выбора файла
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+        
+        function handleFileSelect(file) {
+            if (!file.name.endsWith('.zip')) {
+                showError('Пожалуйста, выберите ZIP архив');
+                return;
+            }
+            
+            if (file.size > 500 * 1024 * 1024) { // 500 MB
+                showError('Файл слишком большой (макс. 500 МБ)');
+                return;
+            }
+            
+            selectedFile = file;
+            fileName.textContent = file.name;
+            fileSize.textContent = formatFileSize(file.size);
+            fileInfo.classList.add('active');
+            processBtn.disabled = false;
+            hideError();
+            hideSuccess();
+            stats.classList.remove('active');
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' Б';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' КБ';
+            if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' МБ';
+            return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' ГБ';
+        }
+        
+        // Обработка кнопки
+        processBtn.addEventListener('click', async () => {
+            if (!selectedFile) return;
+            
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('size', document.getElementById('watermarkSize').value);
+            formData.append('workers', document.getElementById('workers').value);
+            formData.append('keep_structure', document.getElementById('keepStructure').checked);
+            
+            loading.classList.add('active');
+            processBtn.disabled = true;
+            progressBar.classList.add('active');
+            progressFill.style.width = '0%';
+            hideError();
+            hideSuccess();
+            stats.classList.remove('active');
+            
+            loadingText.textContent = 'Загружаем архив...';
+            progressFill.style.width = '10%';
+            
+            try {
+                const response = await fetch('/api/batch-process', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                progressFill.style.width = '50%';
+                loadingText.textContent = 'Обрабатываем изображения...';
+                
+                if (response.ok) {
+                    progressFill.style.width = '90%';
+                    loadingText.textContent = 'Создаем архив...';
+                    
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'processed_images.zip';
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    
+                    progressFill.style.width = '100%';
+                    
+                    showSuccess('✅ Обработка завершена! Архив скачан.');
+                    
+                    // Показываем примерную статистику
+                    statTotal.textContent = '?';
+                    statProcessed.textContent = '✓';
+                    statFailed.textContent = '0';
+                    stats.classList.add('active');
+                    
+                } else {
+                    const data = await response.json();
+                    showError(data.error || 'Ошибка при обработке');
+                }
+                
+            } catch (err) {
+                showError('Ошибка соединения с сервером');
+                console.error(err);
+            } finally {
+                loading.classList.remove('active');
+                processBtn.disabled = false;
+                progressBar.classList.remove('active');
+            }
+        });
+        
+        function showError(message) {
+            error.textContent = '❌ ' + message;
+            error.classList.add('active');
+        }
+        
+        function hideError() {
+            error.classList.remove('active');
+        }
+        
+        function showSuccess(message) {
+            success.textContent = message;
+            success.classList.add('active');
+        }
+        
+        function hideSuccess() {
+            success.classList.remove('active');
+        }
+    </script>
+</body>
+</html>
