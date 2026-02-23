@@ -38,6 +38,15 @@
             margin-bottom: 30px;
         }
         
+        .warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        
         .upload-area {
             border: 2px dashed #ccc;
             border-radius: 10px;
@@ -278,15 +287,6 @@
             color: #888;
             margin-top: 5px;
         }
-        
-        .warning {
-            background: #fff3cd;
-            color: #856404;
-            padding: 10px;
-            border-radius: 5px;
-            margin: 10px 0;
-            font-size: 14px;
-        }
     </style>
 </head>
 <body>
@@ -317,6 +317,14 @@
                     <option value="auto">Автоопределение</option>
                     <option value="small">Маленький (48px)</option>
                     <option value="large">Большой (96px)</option>
+                </select>
+            </div>
+            
+            <div class="option-group">
+                <label for="method">Метод удаления:</label>
+                <select id="method">
+                    <option value="inpaint">🎨 Заливка цветом (inpaint)</option>
+                    <option value="advanced">🔍 Интерполяция (advanced)</option>
                 </select>
             </div>
             
@@ -387,6 +395,11 @@
         const statProcessed = document.getElementById('statProcessed');
         const statFailed = document.getElementById('statFailed');
         
+        const watermarkSize = document.getElementById('watermarkSize');
+        const methodSelect = document.getElementById('method');
+        const workersInput = document.getElementById('workers');
+        const keepStructureCheck = document.getElementById('keepStructure');
+        
         let selectedFile = null;
         
         // Обработка клика по области загрузки
@@ -438,7 +451,7 @@
             processBtn.disabled = false;
             hideError();
             hideSuccess();
-            stats.classList.remove('active');
+            if (stats) stats.classList.remove('active');
         }
         
         function formatFileSize(bytes) {
@@ -454,20 +467,21 @@
             
             const formData = new FormData();
             formData.append('file', selectedFile);
-            formData.append('size', document.getElementById('watermarkSize').value);
-            formData.append('workers', document.getElementById('workers').value);
-            formData.append('keep_structure', document.getElementById('keepStructure').checked);
+            formData.append('size', watermarkSize.value);
+            formData.append('method', methodSelect.value);
+            formData.append('workers', workersInput.value);
+            formData.append('keep_structure', keepStructureCheck.checked);
             
             loading.classList.add('active');
             processBtn.disabled = true;
-            progressBar.classList.add('active');
-            progressFill.style.width = '0%';
+            if (progressBar) progressBar.classList.add('active');
+            if (progressFill) progressFill.style.width = '0%';
             hideError();
             hideSuccess();
-            stats.classList.remove('active');
+            if (stats) stats.classList.remove('active');
             
             loadingText.textContent = 'Загружаем архив...';
-            progressFill.style.width = '10%';
+            if (progressFill) progressFill.style.width = '10%';
             
             try {
                 const response = await fetch('/api/batch-process', {
@@ -475,11 +489,11 @@
                     body: formData
                 });
                 
-                progressFill.style.width = '50%';
+                if (progressFill) progressFill.style.width = '50%';
                 loadingText.textContent = 'Обрабатываем изображения...';
                 
                 if (response.ok) {
-                    progressFill.style.width = '90%';
+                    if (progressFill) progressFill.style.width = '90%';
                     loadingText.textContent = 'Создаем архив...';
                     
                     const blob = await response.blob();
@@ -490,15 +504,15 @@
                     a.click();
                     window.URL.revokeObjectURL(url);
                     
-                    progressFill.style.width = '100%';
+                    if (progressFill) progressFill.style.width = '100%';
                     
                     showSuccess('✅ Обработка завершена! Архив скачан.');
                     
                     // Показываем примерную статистику
-                    statTotal.textContent = '?';
-                    statProcessed.textContent = '✓';
-                    statFailed.textContent = '0';
-                    stats.classList.add('active');
+                    if (statTotal) statTotal.textContent = '?';
+                    if (statProcessed) statProcessed.textContent = '✓';
+                    if (statFailed) statFailed.textContent = '0';
+                    if (stats) stats.classList.add('active');
                     
                 } else {
                     const data = await response.json();
@@ -511,13 +525,17 @@
             } finally {
                 loading.classList.remove('active');
                 processBtn.disabled = false;
-                progressBar.classList.remove('active');
+                if (progressBar) progressBar.classList.remove('active');
             }
         });
         
         function showError(message) {
             error.textContent = '❌ ' + message;
             error.classList.add('active');
+            
+            setTimeout(() => {
+                error.classList.remove('active');
+            }, 5000);
         }
         
         function hideError() {
@@ -527,6 +545,10 @@
         function showSuccess(message) {
             success.textContent = message;
             success.classList.add('active');
+            
+            setTimeout(() => {
+                success.classList.remove('active');
+            }, 3000);
         }
         
         function hideSuccess() {
