@@ -216,17 +216,11 @@ class BatchWatermarkRemover:
                 'error': str(e)
             }
     
-  def process_single_image(self, input_path, output_dir, size="auto", original_name=None):
-    try:
-        # ... код ...
-        
-        force_size = None if size == "auto" else size
-        self.watermark_remover.remove_watermark(
-            input_path,
-            output_path,
-            force_size=force_size  # Важно: передаем как named argument
-        )
-        
+    def process_batch(self, 
+                     zip_path: str,
+                     size: str = "auto",
+                     max_workers: int = 4,
+                     keep_structure: bool = True) -> Tuple[str, Dict]:
         """
         Обрабатывает все изображения из ZIP архива
         
@@ -439,6 +433,4 @@ if __name__ == "__main__":
         
     except Exception as e:
         print(f"❌ Ошибка: {e}")
-
         exit(1)
-
