@@ -167,7 +167,8 @@ class BatchWatermarkRemover:
                             input_path: str, 
                             output_dir: str,
                             size: str = "auto",
-                            original_name: str = None) -> Dict:
+                            original_name: str = None,
+                            method: str = "inpaint") -> Dict:
         """
         Обрабатывает одно изображение
         
@@ -194,7 +195,8 @@ class BatchWatermarkRemover:
             self.watermark_remover.remove_watermark(
                 input_path,
                 output_path,
-                force_size=force_size
+                force_size=force_size,
+                method=method
             )
             
             process_time = time.time() - start_time
@@ -220,7 +222,8 @@ class BatchWatermarkRemover:
                      zip_path: str,
                      size: str = "auto",
                      max_workers: int = 4,
-                     keep_structure: bool = True) -> Tuple[str, Dict]:
+                     keep_structure: bool = True,
+                     method: str = "inpaint") -> Tuple[str, Dict]:
         """
         Обрабатывает все изображения из ZIP архива
         
@@ -229,6 +232,7 @@ class BatchWatermarkRemover:
             size: размер водяного знака ('auto', 'small', 'large')
             max_workers: количество параллельных потоков
             keep_structure: сохранять структуру папок
+            method: метод удаления водяного знака
             
         Returns:
             (output_zip_path, stats)
@@ -262,7 +266,7 @@ class BatchWatermarkRemover:
             stats['total_images'] = len(image_files)
             stats['skipped'] = len(all_files) - len(image_files)
             
-            logger.info(f"Начинаем обработку {len(image_files)} изображений")
+            logger.info(f"Начинаем обработку {len(image_files)} изображений методом {method}")
             
             # Параллельная обработка
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -281,7 +285,8 @@ class BatchWatermarkRemover:
                         img_path,
                         output_dir,
                         size,
-                        original_name
+                        original_name,
+                        method
                     )
                     futures.append(future)
                 
@@ -416,6 +421,8 @@ if __name__ == "__main__":
                        help="Количество параллельных потоков")
     parser.add_argument("--no-structure", action='store_true',
                        help="Не сохранять структуру папок")
+    parser.add_argument("-m", "--method", choices=['inpaint', 'advanced'], 
+                       default='inpaint', help="Метод удаления водяного знака")
     
     args = parser.parse_args()
     
@@ -425,7 +432,8 @@ if __name__ == "__main__":
             args.zip_file,
             size=args.size,
             max_workers=args.workers,
-            keep_structure=not args.no_structure
+            keep_structure=not args.no_structure,
+            method=args.method
         )
         
         print(f"\n✅ Готово! Результат сохранен в: {output_zip}")
