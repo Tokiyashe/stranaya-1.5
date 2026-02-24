@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Пакетное скачивание видео TikTok</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #00f2fe 0%, #ff0050 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .info-box {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            border-left: 4px solid #1976d2;
+        }
+        
+        .urls-input {
+            margin-bottom: 20px;
+        }
+        
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: monospace;
+            resize: vertical;
+            min-height: 200px;
+        }
+        
+        textarea:focus {
+            outline: none;
+            border-color: #ff0050;
+        }
+        
+        .options {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f5f5f5;
+            border-radius: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .option-group {
+            flex: 1;
+            min-width: 150px;
+        }
+        
+        .option-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        select, input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 25px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #ff0050;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        button {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            flex: 1;
+        }
+        
+        .download-btn {
+            background: #ff0050;
+            color: white;
+        }
+        
+        .download-btn:hover:not(:disabled) {
+            background: #e00045;
+            transform: translateY(-2px);
+        }
+        
+        .preview-btn {
+            background: #f0f0f0;
+            color: #333;
+        }
+        
+        .preview-btn:hover:not(:disabled) {
+            background: #e0e0e0;
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .loading.active {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #ff0050;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .progress-bar.active {
+            display: block;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00f2fe, #ff0050);
+            width: 0%;
+            transition: width 0.3s;
+        }
+        
+        .preview-results {
+            display: none;
+            margin: 20px 0;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 10px;
+        }
+        
+        .preview-results.active {
+            display: block;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ff0050;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .url-list {
+            max-height: 150px;
+            overflow-y: auto;
+            margin: 10px 0;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        
+        .url-item.valid {
+            color: #4caf50;
+        }
+        
+        .url-item.invalid {
+            color: #f44336;
+        }
+        
+        .error {
+            color: #d32f2f;
+            margin: 10px 0;
+            padding: 10px;
+            background: #ffebee;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .error.active {
+            display: block;
+        }
+        
+        .success {
+            color: #4caf50;
+            margin: 10px 0;
+            padding: 10px;
+            background: #e8f5e8;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .success.active {
+            display: block;
+        }
+        
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #ff0050;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        
+        .example-link {
+            color: #ff0050;
+            text-decoration: none;
+            font-size: 13px;
+            margin-top: 5px;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📦 Пакетное скачивание видео TikTok</h1>
+        <p class="subtitle">Вставь несколько ссылок - получи ZIP архив с видео в высоком качестве</p>
+        
+        <div class="info-box">
+            📌 Вставь ссылки по одной на строку (до 50 ссылок за раз)<br>
+            🔗 Поддерживаются любые ссылки TikTok (обычные и короткие vt.tiktok.com)
+        </div>
+        
+        <div class="urls-input">
+            <textarea id="urlsInput" placeholder="https://vt.tiktok.com/ZSm5vrd7E/
+https://www.tiktok.com/@user/video/123456789
+https://vt.tiktok.com/ZSm6abcde/"></textarea>
+            <a href="#" class="example-link" onclick="setExampleUrls(event)">📋 Вставить примеры ссылок</a>
+        </div>
+        
+        <div class="options">
+            <div class="option-group">
+                <label for="quality">Качество видео:</label>
+                <select id="quality">
+                    <option value="high">Высокое (HD)</option>
+                    <option value="low">Низкое (быстрее)</option>
+                </select>
+            </div>
+            
+            <div class="option-group">
+                <label for="workers">Параллельных загрузок:</label>
+                <input type="number" id="workers" min="1" max="5" value="3">
+                <div style="font-size: 12px; color: #666;">Больше = быстрее, но нагрузка</div>
+            </div>
+            
+            <div class="checkbox-group">
+                <input type="checkbox" id="createZip" checked>
+                <label for="createZip">Создать ZIP архив</label>
+            </div>
+        </div>
+        
+        <div class="actions">
+            <button class="preview-btn" onclick="previewUrls()">🔍 Проверить ссылки</button>
+            <button class="download-btn" onclick="downloadVideos()" id="downloadBtn">📥 Скачать видео</button>
+        </div>
+        
+        <div class="preview-results" id="previewResults">
+            <h3>Результаты проверки:</h3>
+            <div class="stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="previewTotal">0</div>
+                    <div class="stat-label">всего</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="previewValid">0</div>
+                    <div class="stat-label">валидные</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="previewInvalid">0</div>
+                    <div class="stat-label">невалидные</div>
+                </div>
+            </div>
+            
+            <div id="validUrlsList" class="url-list"></div>
+        </div>
+        
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p id="loadingText">Подготовка...</p>
+        </div>
+        
+        <div class="error" id="error"></div>
+        <div class="success" id="success"></div>
+        
+        <a href="/" class="back-link">← Вернуться на главную</a>
+    </div>
+
+    <script>
+        const urlsInput = document.getElementById('urlsInput');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loadingText');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const error = document.getElementById('error');
+        const success = document.getElementById('success');
+        const previewResults = document.getElementById('previewResults');
+        
+        function setExampleUrls(e) {
+            e.preventDefault();
+            urlsInput.value = 'https://vt.tiktok.com/ZSm5vrd7E/\nhttps://vt.tiktok.com/ZSm6abcde/\nhttps://www.tiktok.com/@therock/video/7123456789012345678\nhttps://invalid-link.com';
+        }
+        
+        async function previewUrls() {
+            const urls = urlsInput.value.trim();
+            
+            if (!urls) {
+                showError('Вставьте ссылки');
+                return;
+            }
+            
+            loading.classList.add('active');
+            loadingText.textContent = 'Проверяем ссылки...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('urls', urls);
+                
+                const response = await fetch('/api/batch-video-preview', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                document.getElementById('previewTotal').textContent = data.total;
+                document.getElementById('previewValid').textContent = data.valid;
+                document.getElementById('previewInvalid').textContent = data.invalid;
+                
+                const validList = document.getElementById('validUrlsList');
+                validList.innerHTML = '';
+                
+                if (data.valid_urls && data.valid_urls.length) {
+                    validList.innerHTML += '<strong>Валидные (первые 10):</strong><br>';
+                    data.valid_urls.forEach(url => {
+                        validList.innerHTML += `<div class="url-item valid">✓ ${url}</div>`;
+                    });
+                }
+                
+                if (data.invalid_urls && data.invalid_urls.length) {
+                    validList.innerHTML += '<br><strong>Невалидные:</strong><br>';
+                    data.invalid_urls.forEach(url => {
+                        validList.innerHTML += `<div class="url-item invalid">✗ ${url}</div>`;
+                    });
+                }
+                
+                previewResults.classList.add('active');
+                
+            } catch (err) {
+                showError('Ошибка при проверке');
+                console.error(err);
+            } finally {
+                loading.classList.remove('active');
+            }
+        }
+        
+        async function downloadVideos() {
+            const urls = urlsInput.value.trim();
+            
+            if (!urls) {
+                showError('Вставьте ссылки на видео');
+                return;
+            }
+            
+            const urlList = urls.split('\n').filter(u => u.trim());
+            
+            if (urlList.length > 50) {
+                showError('Максимум 50 ссылок за раз');
+                return;
+            }
+            
+            loading.classList.add('active');
+            downloadBtn.disabled = true;
+            progressBar.classList.add('active');
+            progressFill.style.width = '0%';
+            hideError();
+            hideSuccess();
+            
+            loadingText.textContent = 'Подготовка к скачиванию...';
+            progressFill.style.width = '10%';
+            
+            const formData = new FormData();
+            formData.append('urls', urls);
+            formData.append('quality', document.getElementById('quality').value);
+            formData.append('workers', document.getElementById('workers').value);
+            formData.append('create_zip', document.getElementById('createZip').checked);
+            
+            try {
+                progressFill.style.width = '30%';
+                loadingText.textContent = 'Скачиваем видео...';
+                
+                const response = await fetch('/api/batch-video-download', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                progressFill.style.width = '80%';
+                loadingText.textContent = 'Создаем архив...';
+                
+                if (response.ok) {
+                    const contentType = response.headers.get('content-type');
+                    
+                    if (contentType && contentType.includes('application/zip')) {
+                        // Скачиваем ZIP
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'tiktok_videos.zip';
+                        a.click();
+                        window.URL.revokeObjectURL(url);
+                        
+                        progressFill.style.width = '100%';
+                        showSuccess('✅ Готово! Архив скачан.');
+                    } else {
+                        // Получаем статистику
+                        const data = await response.json();
+                        if (data.success) {
+                            showSuccess(`✅ Скачано ${data.stats.success} из ${data.stats.total} видео`);
+                        } else {
+                            showSuccess('✅ Обработка завершена');
+                        }
+                    }
+                } else {
+                    const data = await response.json();
+                    showError(data.error || 'Ошибка при скачивании');
+                }
+                
+            } catch (err) {
+                showError('Ошибка соединения с сервером');
+                console.error(err);
+            } finally {
+                loading.classList.remove('active');
+                downloadBtn.disabled = false;
+                progressBar.classList.remove('active');
+            }
+        }
+        
+        function showError(message) {
+            error.textContent = '❌ ' + message;
+            error.classList.add('active');
+            
+            setTimeout(() => {
+                error.classList.remove('active');
+            }, 5000);
+        }
+        
+        function hideError() {
+            error.classList.remove('active');
+        }
+        
+        function showSuccess(message) {
+            success.textContent = message;
+            success.classList.add('active');
+            
+            setTimeout(() => {
+                success.classList.remove('active');
+            }, 5000);
+        }
+        
+        function hideSuccess() {
+            success.classList.remove('active');
+        }
+    </script>
+</body>
+</html>
