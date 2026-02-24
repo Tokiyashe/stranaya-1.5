@@ -16,6 +16,7 @@ import video_downloader
 import photo_downloader
 from batch_processor import get_batch_processor
 from watermark_remover import get_remover
+from batch_video_downloader import get_batch_video_downloader  # <--- ДОБАВЛЕНО
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -37,12 +38,14 @@ app.add_middleware(
 os.makedirs("downloads/videos", exist_ok=True)
 os.makedirs("downloads/photos", exist_ok=True)
 os.makedirs("downloads/batch", exist_ok=True)
+os.makedirs("downloads/batch_videos", exist_ok=True)  # <--- ДОБАВЛЕНО
 os.makedirs("uploads", exist_ok=True)
 os.makedirs("masks", exist_ok=True)
 
 # Инициализация обработчиков
 batch_processor = get_batch_processor()
 watermark_remover = get_remover(mask_dir="masks/")
+batch_video_downloader = get_batch_video_downloader()  # <--- ДОБАВЛЕНО
 
 # ==================== ГЛАВНЫЕ СТРАНИЦЫ ====================
 
@@ -65,6 +68,12 @@ async def remove_watermark_page(request: Request):
 async def batch_watermark_page(request: Request):
     """Страница пакетной обработки ZIP архива"""
     return templates.TemplateResponse("batch_watermark.html", {"request": request})
+
+# <--- НОВАЯ СТРАНИЦА --->
+@app.get("/batch-video", response_class=HTMLResponse)
+async def batch_video_page(request: Request):
+    """Страница пакетного скачивания видео"""
+    return templates.TemplateResponse("batch_video.html", {"request": request})
 
 # ==================== API ДЛЯ TIKTOK ====================
 
@@ -340,6 +349,7 @@ async def get_file(filename: str):
     possible_paths = [
         os.path.join("downloads/photos", filename),
         os.path.join("downloads/batch", filename),
+        os.path.join("downloads/batch_videos", filename),  # <--- ДОБАВЛЕНО
         os.path.join("uploads", filename)
     ]
     
@@ -356,6 +366,100 @@ async def get_file(filename: str):
         content={"error": "Файл не найден"}
     )
 
+# ==================== НОВЫЙ КОД: API ДЛЯ ПАКЕТНОГО ВИДЕО ====================
+
+@app.post("/api/batch-video-download")
+async def batch_video_download(
+    urls: str = Form(...),
+    quality: str = Form("high"),
+    workers: int = Form(3),
+    create_zip: bool = Form(True)
+):
+    """
+    Пакетное скачивание видео по списку ссылок
+    """
+    try:
+        # Разделяем ссылки (по одной на строку)
+        url_list = [url.strip() for url in urls.split('\n') if url.strip()]
+        
+        if not url_list:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Нет ссылок для скачивания"}
+            )
+        
+        if len(url_list) > 50:
+            return JSONResponse(
+                status_code=400,
+                content={"error": "Максимум 50 ссылок за раз"}
+            )
+        
+        logger.info(f"Пакетное скачивание {len(url_list)} видео")
+        
+        # Скачиваем видео
+        zip_path, stats = await batch_video_downloader.download_batch(
+            url_list,
+            quality=quality,
+            max_workers=workers,
+            create_zip=create_zip
+        )
+        
+        if create_zip and zip_path:
+            # Возвращаем ZIP архив
+            filename = os.path.basename(zip_path)
+            return FileResponse(
+                path=zip_path,
+                media_type="application/zip",
+                filename=filename
+            )
+        else:
+            # Возвращаем статистику
+            return {
+                'success': True,
+                'stats': stats,
+                'message': f'Скачано {stats["success"]} из {stats["total"]} видео'
+            }
+        
+    except Exception as e:
+        logger.error(f"Ошибка batch-video-download: {e}")
+        return JSONResponse(
+            status_code=400,
+            content={"error": str(e)}
+        )
+
+@app.post("/api/batch-video-preview")
+async def batch_video_preview(urls: str = Form(...)):
+    """
+    Предварительный просмотр ссылок (проверка валидности)
+    """
+    try:
+        url_list = [url.strip() for url in urls.split('\n') if url.strip()]
+        
+        valid_urls = []
+        invalid_urls = []
+        
+        for url in url_list:
+            if batch_video_downloader.validate_url(url):
+                valid_urls.append(url)
+            else:
+                invalid_urls.append(url)
+        
+        return {
+            'total': len(url_list),
+            'valid': len(valid_urls),
+            'invalid': len(invalid_urls),
+            'valid_urls': valid_urls[:10],  # Показываем первые 10
+            'invalid_urls': invalid_urls[:5]
+        }
+        
+    except Exception as e:
+        return JSONResponse(
+            status_code=400,
+            content={"error": str(e)}
+        )
+
+# ==================== КОНЕЦ НОВОГО КОДА ====================
+
 # ==================== СТАТИКА И ОЧИСТКА ====================
 
 @app.on_event("startup")
@@ -365,6 +469,7 @@ async def startup():
         "downloads/videos", 
         "downloads/photos", 
         "downloads/batch",
+        "downloads/batch_videos",  # <--- ДОБАВЛЕНО
         "uploads",
         "masks"
     ]
@@ -395,6 +500,7 @@ async def shutdown():
     try:
         shutil.rmtree("uploads", ignore_errors=True)
         shutil.rmtree("downloads/batch", ignore_errors=True)
+        shutil.rmtree("downloads/batch_videos", ignore_errors=True)  # <--- ДОБАВЛЕНО
         logger.info("Временные файлы очищены")
     except:
         pass
